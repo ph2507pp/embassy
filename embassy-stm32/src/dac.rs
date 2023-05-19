@@ -200,6 +200,31 @@ impl<'d, T: Instance> Dac<'d, T> {
         }
     }
 
+    /// Configures the given dac Channel as Triangle-Wave-Generator
+    /// 
+    /// Amplitude can be selected between 1 to 4095 where:
+    /// * 0b0000 -> 1
+    /// * 0b0001 -> 3
+    /// * ...
+    /// * 0b1001 -> 1023
+    /// * 0b1010 -> 2047
+    /// * (>= 0b1011) -> 4095
+    pub fn set_triangle_generator(&mut self, ch: Channel, amplitude: u8) -> Result<(), Error> {
+        self.check_channel_exists(ch)?;
+        self.disable_channel(ch).unwrap();
+        unsafe {
+            T::regs().cr().modify(|reg| {
+                reg.set_wave(ch as usize, stm32_metapac::dac::vals::Wave::TRIANGLE);
+            })
+        }
+        unsafe {
+            T::regs().cr().modify(|reg| {
+                reg.set_mamp(ch as usize, amplitude & 0x0F);
+            })
+        }
+        Ok(())
+    }
+
     pub fn set(&mut self, ch: Channel, value: Value) -> Result<(), Error> {
         self.check_channel_exists(ch)?;
         match value {
