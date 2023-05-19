@@ -182,7 +182,8 @@ impl<'d, T: Instance> Dac<'d, T> {
     }
 
     pub fn trigger(&mut self, ch: Channel) -> Result<(), Error> {
-        self.check_channel_exists(ch)?;
+        // more speed
+        //self.check_channel_exists(ch)?;
         unsafe {
             T::regs().swtrigr().write(|reg| {
                 reg.set_swtrig(ch.index(), true);
