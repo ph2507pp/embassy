@@ -4,6 +4,7 @@ use embassy_hal_common::{into_ref, PeripheralRef};
 
 use crate::pac::dac;
 use crate::rcc::RccPeripheral;
+use crate::timer::Basic16bitInstance;
 use crate::{peripherals, Peripheral};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -206,7 +207,7 @@ impl<'d, T: Instance> Dac<'d, T> {
         self.disable_channel(ch).unwrap();
         unsafe {
             T::regs().cr().modify(|reg| {
-                reg.set_ten(ch.index(), true);  // TODO use Channel index
+                reg.set_ten(ch.index(), true); // TODO use Channel index
             })
         }
         Ok(())
@@ -217,14 +218,14 @@ impl<'d, T: Instance> Dac<'d, T> {
         self.disable_channel(ch).unwrap();
         unsafe {
             T::regs().cr().modify(|reg| {
-                reg.set_ten(ch.index(), false);  // TODO use Channel index
+                reg.set_ten(ch.index(), false); // TODO use Channel index
             })
         }
         Ok(())
     }
 
     /// Configures the given dac Channel as Triangle-Wave-Generator
-    /// 
+    ///
     /// Amplitude can be selected between 1 to 4095 where:
     /// * 0b0000 -> 1
     /// * 0b0001 -> 3
@@ -323,4 +324,42 @@ macro_rules! impl_dac_pin {
     ($inst:ident, $pin:ident, $ch:expr) => {
         impl crate::dac::DacPin<peripherals::$inst, $ch> for crate::peripherals::$pin {}
     };
+}
+
+#[allow(unused_imports)]
+use crate::gpio::sealed::{AFType, Pin};
+use crate::time::Hertz;
+
+pub struct TimTrog<'d, T> {
+    inner: PeripheralRef<'d, T>,
+}
+
+impl<'d, T: Basic16bitInstance> TimTrog<'d, T> {
+    pub fn new(tim: impl Peripheral<P = T> + 'd, freq: Hertz) -> Self {
+        Self::new_inner(tim, freq)
+    }
+
+    fn new_inner(tim: impl Peripheral<P = T> + 'd, freq: Hertz) -> Self {
+        into_ref!(tim);
+
+        T::enable();
+        <T as crate::rcc::sealed::RccPeripheral>::reset();
+
+        let mut this = Self { inner: tim };
+
+        this.inner.set_frequency(freq);
+        this.inner.start();
+        this
+    }
+
+    pub fn set_freq(&mut self, freq: Hertz) {
+        self.inner.set_frequency(freq);
+    }
+
+    pub fn set_trog_event(&mut self) {
+        use stm32_metapac::timer::vals;
+        unsafe {
+            T::regs().cr2().modify(|r| r.set_mms(vals::Mms::UPDATE));
+        }
+    }
 }

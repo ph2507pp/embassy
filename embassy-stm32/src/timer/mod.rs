@@ -17,8 +17,6 @@ pub(crate) mod sealed {
 
         fn regs() -> crate::pac::timer::TimBasic;
 
-        fn readCR1(&mut self) -> bool;
-
         fn start(&mut self);
 
         fn stop(&mut self);
@@ -26,8 +24,6 @@ pub(crate) mod sealed {
         fn reset(&mut self);
 
         fn set_frequency(&mut self, frequency: Hertz);
-
-        fn set_trog_update_event(&mut self);
 
         fn clear_update_interrupt(&mut self) -> bool;
 
@@ -67,13 +63,6 @@ macro_rules! impl_basic_16bit_timer {
                 crate::pac::timer::TimBasic(crate::pac::$inst.0)
             }
 
-            fn readCR1(&mut self) -> bool {
-                unsafe {
-                    let cr1 = Self::regs().cr1().read();
-                    cr1.cen()
-                }
-            }
-
             fn start(&mut self) {
                 unsafe {
                     Self::regs().cr1().modify(|r| r.set_cen(true));
@@ -89,12 +78,6 @@ macro_rules! impl_basic_16bit_timer {
             fn reset(&mut self) {
                 unsafe {
                     Self::regs().cnt().write(|r| r.set_cnt(0));
-                }
-            }
-
-            fn set_trog_update_event(&mut self){
-                unsafe {
-                    Self::regs().cr2().modify(|r| r.set_mms(vals::Mms::UPDATE));
                 }
             }
 

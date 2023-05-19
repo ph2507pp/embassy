@@ -19,7 +19,7 @@ async fn main(_spawner: Spawner) {
 
     let config = Config::default();
     let irq = interrupt::take!(USART3);
-    let mut usart = Uart::new(p.USART3, p.PD9, p.PD8, irq, p.DMA1_CH3, NoDma, config);
+    let mut usart = Uart::new(p.USART3, p.PB11, p.PB10, irq, p.DMA1_CH3, NoDma, config);
 
     for n in 0u32.. {
         let mut s: String<128> = String::new();

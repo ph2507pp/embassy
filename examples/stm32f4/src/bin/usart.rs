@@ -17,7 +17,7 @@ fn main() -> ! {
 
     let config = Config::default();
     let irq = interrupt::take!(USART3);
-    let mut usart = Uart::new(p.USART3, p.PD9, p.PD8, irq, NoDma, NoDma, config);
+    let mut usart = Uart::new(p.USART3, p.PB11, p.PB10, irq, NoDma, NoDma, config);
 
     unwrap!(usart.blocking_write(b"Hello Embassy World!\r\n"));
     info!("wrote Hello, starting echo");
