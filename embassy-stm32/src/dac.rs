@@ -200,6 +200,28 @@ impl<'d, T: Instance> Dac<'d, T> {
         }
     }
 
+    pub fn enable_trigger(&mut self, ch: Channel) -> Result<(), Error> {
+        self.check_channel_exists(ch)?;
+        self.disable_channel(ch).unwrap();
+        unsafe {
+            T::regs().cr().modify(|reg| {
+                reg.set_ten(ch.index(), true);  // TODO use Channel index
+            })
+        }
+        Ok(())
+    }
+
+    pub fn disable_trigger(&mut self, ch: Channel) -> Result<(), Error> {
+        self.check_channel_exists(ch)?;
+        self.disable_channel(ch).unwrap();
+        unsafe {
+            T::regs().cr().modify(|reg| {
+                reg.set_ten(ch.index(), false);  // TODO use Channel index
+            })
+        }
+        Ok(())
+    }
+
     /// Configures the given dac Channel as Triangle-Wave-Generator
     /// 
     /// Amplitude can be selected between 1 to 4095 where:
@@ -219,7 +241,7 @@ impl<'d, T: Instance> Dac<'d, T> {
         }
         unsafe {
             T::regs().cr().modify(|reg| {
-                reg.set_mamp(ch as usize, amplitude & 0x0F);
+                reg.set_mamp(ch as usize, amplitude);
             })
         }
         Ok(())
