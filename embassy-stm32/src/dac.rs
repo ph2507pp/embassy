@@ -249,6 +249,10 @@ impl<'d, T: Instance> Dac<'d, T> {
         Ok(())
     }
 
+    pub fn read_cr(&mut self) -> u32{
+        unsafe { T::regs().cr().read().0 }
+    }
+
     pub fn set(&mut self, ch: Channel, value: Value) -> Result<(), Error> {
         self.check_channel_exists(ch)?;
         match value {
@@ -361,5 +365,17 @@ impl<'d, T: Basic16bitInstance> TimTrog<'d, T> {
         unsafe {
             T::regs().cr2().modify(|r| r.set_mms(vals::Mms::UPDATE));
         }
+    }
+
+    pub fn read_cr1(&mut self) -> u32 {
+        unsafe { T::regs().cr1().read().0 }
+    }
+
+    pub fn read_cr2(&mut self) -> u32 {
+        unsafe { T::regs().cr2().read().0 }
+    }
+
+    pub fn read_cnt(&mut self) -> u32 {
+        unsafe { T::regs().cnt().read().0 }
     }
 }
