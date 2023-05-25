@@ -106,6 +106,10 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
         unsafe { self.inner.get_max_compare_value() }
     }
 
+    pub fn read_ccr(&mut self, channel: Channel) -> u32 {
+        unsafe { T::regs_gp16().ccr(channel.raw()).read().0 }
+    }
+
     pub fn set_duty(&mut self, channel: Channel, duty: u16) {
         assert!(duty < self.get_max_duty());
         unsafe { self.inner.set_compare_value(channel, duty) }
