@@ -229,8 +229,24 @@ impl<'d, T: ComplementaryCaptureCompare16bitInstance> ComplementaryPwmExtTrigger
     pub fn read_cnt(&mut self) -> u32 {
         unsafe { T::regs_gp16().cnt().read().0 }
     }
-    pub fn reset_cnt(&mut self) {
-        unsafe { T::regs_gp16().cnt().modify(|w| w.set_cnt(0)) }
+    pub fn set_cnt(&mut self, val: u16) {
+        unsafe { T::regs_gp16().cnt().modify(|w| w.set_cnt(val)) }
+    }
+
+    /// invert Polarity on Channel for normal Channel output and Complemantary output
+    pub fn set_invert_channel(&mut self, channel: Channel, val: bool){
+        unsafe{ T::regs_advanced().ccer().modify(|w|{
+            w.set_ccnp(channel.raw(), val);
+            w.set_ccp(channel.raw(), val);
+        })}
+    }
+
+    pub fn start(&mut self) {
+        self.inner.start();
+    }
+
+    pub fn stop(&mut self) {
+        self.inner.stop();
     }
 
     pub fn set_freq(&mut self, freq: Hertz) {

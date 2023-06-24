@@ -9,8 +9,8 @@ use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::pwm::complementary_pwm::{Ckd, ComplementaryPwmExtTriggerCH1, ComplementaryPwmPin, InputPin};
 use embassy_stm32::pwm::simple_pwm::{PwmPin, SimplePwm};
 use embassy_stm32::pwm::{CaptureCompare16bitInstance, Channel};
-use embassy_stm32::time::khz;
-use embassy_time::{Delay, Duration, Timer};
+use embassy_stm32::time::{hz, khz};
+use embassy_time::{Delay, Duration, Ticker, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
 fn limit(mut val: i16, max: u16) -> u16 {
@@ -44,7 +44,7 @@ where
 }
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
     info!("Hello World!");
 
@@ -88,16 +88,17 @@ async fn main(_spawner: Spawner) {
     );
     // let max = pwm.get_max_duty();
     tim1_pwm.set_dead_time_clock_division(Ckd::DIV1);
-    tim1_pwm.set_dead_time_value(0);
+    tim1_pwm.set_dead_time_value(0x08);
     tim1_pwm.set_duty(Channel::Ch2, 2);
+    tim1_pwm.set_invert_channel(Channel::Ch2, true);
     tim1_pwm.set_duty(Channel::Ch3, 2);
+    tim1_pwm.set_invert_channel(Channel::Ch3, true);
     tim8_pwm.set_dead_time_clock_division(Ckd::DIV1);
-    tim8_pwm.set_dead_time_value(0);
+    tim8_pwm.set_dead_time_value(0x08);  //0 to 15875ns by 125ns step  0x04 -> 500ns, wenn 8MHZ hier 16MHz also 0x08 -> 500ns
     tim8_pwm.set_duty(Channel::Ch2, 2);
+    tim8_pwm.set_invert_channel(Channel::Ch2, true);
     tim8_pwm.set_duty(Channel::Ch3, 2);
-
-    tim1_pwm.reset_cnt();
-    tim8_pwm.reset_cnt();
+    tim8_pwm.set_invert_channel(Channel::Ch3, true);
 
     tim1_pwm.enable(Channel::Ch2);
     tim1_pwm.enable(Channel::Ch3);
@@ -111,13 +112,36 @@ async fn main(_spawner: Spawner) {
     let mut tim3_pwm: SimplePwm<_> = SimplePwm::new(p.TIM3, Some(ch1), Some(ch2), None, None, khz(60));
 
     set_phase_shift(&mut tim3_pwm, 0.0);
+    tim3_pwm.stop();
+    tim1_pwm.stop();
+    tim8_pwm.stop();
 
     //Connecting
     // PA6 --> CH1_TIM1  PA8
     // PA7 --> CH1_TIM8  PC6
 
+    tim1_pwm.set_cnt(3);
+    tim8_pwm.set_cnt(3);
+    tim3_pwm.reset_cnt();
+
+    info!("TIM1 CNT: {}", tim1_pwm.read_cnt());
+
+    info!("TIM3 CNT: {}", tim3_pwm.read_cnt());
+    info!("TIM8 CNT: {}", tim8_pwm.read_cnt());
+
     tim3_pwm.enable(Channel::Ch1);
     tim3_pwm.enable(Channel::Ch2);
+
+    info!("TIM1 CNT: {}", tim1_pwm.read_cnt());
+
+    info!("TIM3 CNT: {}", tim3_pwm.read_cnt());
+    info!("TIM8 CNT: {}", tim8_pwm.read_cnt());
+
+    Timer::after(Duration::from_millis(300)).await;
+
+    tim1_pwm.start();
+    tim8_pwm.start();
+    tim3_pwm.start();
 
     //Poti
     let mut delay = Delay;
@@ -128,25 +152,48 @@ async fn main(_spawner: Spawner) {
     info!("TIM1 CR1: {}", tim1_pwm.read_cr1());
     info!("TIM1 CR2: {}", tim1_pwm.read_cr2());
     info!("TIM1 SMCR: {}", tim1_pwm.read_smcr());
+    let mut angle = 0.0;
+    // let mut data = Data { data: &0.0 };
+    // unwrap!(spawner.spawn(ausgabe(&data)));
 
     loop {
         let a0 = adc.read(&mut pin);
-        let mut angle: f32 = (a0 as i32 - 2048) as f32 * 45.0 / 2047.0;
+        let mut angle = (a0 as i32 - 2048) as f32 * 45.0 / 2047.0;
         if (angle > 44.9) {
             angle = 45.0;
         } else if (angle < -44.9) {
             angle = -45.0;
         }
 
-        set_phase_shift(&mut tim3_pwm, angle);
-        info!(
-            "Angle: {} TIM3: CCR1 {}, CCR2 {}",
-            angle,
-            tim3_pwm.read_ccr(Channel::Ch1),
-            tim3_pwm.read_ccr(Channel::Ch2)
-        );
+        // data.set_data(&angle);
+
+        //set_phase_shift(&mut tim3_pwm, angle);
+        //
         // info!("TIM1 CNT: {}", tim1_pwm.read_cnt());
 
         Timer::after(Duration::from_millis(300)).await;
     }
 }
+
+// struct Data<'l, T> {
+//     data: &'l T,
+// }
+// impl<'l, T> Data<'l, T> {
+//     pub fn set_data(&self, val: &T) {
+//         self.data = val;
+//     }
+// }
+
+// #[embassy_executor::task(pool_size = 4)]
+// async fn ausgabe(angle: &Data<'static, f32>) {
+//     let mut ticker = Ticker::every(Duration::from_secs(1));
+//     loop {
+//         info!(
+//             "Angle: {} TIM3: CCR1 , CCR2 ",
+//             angle.data,
+//             // tim3_pwm.read_ccr(Channel::Ch1),
+//             // tim3_pwm.read_ccr(Channel::Ch2)
+//         );
+//         ticker.next().await;
+//     }
+// }

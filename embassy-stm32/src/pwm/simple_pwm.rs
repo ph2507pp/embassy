@@ -86,6 +86,21 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
         this
     }
 
+    pub fn start(&mut self) {
+        self.inner.start();
+    }
+
+    pub fn stop(&mut self) {
+        self.inner.stop();
+    }
+
+    pub fn read_cnt(&mut self) -> u32 {
+        unsafe { T::regs_gp16().cnt().read().0 }
+    }
+    pub fn reset_cnt(&mut self) {
+        unsafe { T::regs_gp16().cnt().modify(|w| w.set_cnt(0)) }
+    }
+
     pub fn enable(&mut self, channel: Channel) {
         unsafe {
             self.inner.enable_channel(channel, true);
